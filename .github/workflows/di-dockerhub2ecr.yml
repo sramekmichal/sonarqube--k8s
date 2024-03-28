@@ -1,0 +1,45 @@
+name: ECR Push
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag of Docker image to pull from Docker Hub'
+        required: true
+        default: '9.9.1-community'
+
+jobs:
+  pull_and_push:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::035814641800:role/sonarqube-imagepusher
+          role-session-name: 'gha-${{ github.repository_owner }}+${{ github.event.repository.name }},Run${{ github.run_id }}.${{ github.run_attempt }}'
+          aws-region: eu-west-1
+          mask-aws-account-id: false 
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          registries: '035814641800'
+
+      - name: Pull Docker image from Docker Hub
+        run: |
+          docker pull sonarqube:${{ github.event.inputs.tag }}
+
+      - name: Tag and push Docker image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: sonarqube
+        run: |
+          docker tag sonarqube:${{ github.event.inputs.tag }} $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.event.inputs.tag }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.event.inputs.tag }}

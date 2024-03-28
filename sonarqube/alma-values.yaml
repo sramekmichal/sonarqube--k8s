@@ -1,0 +1,82 @@
+edition: "community"
+
+image:
+  repository: 035814641800.dkr.ecr.eu-west-1.amazonaws.com/sonarqube
+  tag: 9.9.2-{{ .Values.edition }}
+  pullPolicy: IfNotPresent
+
+plugins:
+  install:
+    - https://github.com/mc1arke/sonarqube-community-branch-plugin/releases/download/1.14.0/sonarqube-community-branch-plugin-1.14.0.jar
+
+# jvmOpts: "-Djava.net.preferIPv4Stack=true"
+jvmOpts: "-javaagent:/opt/sonarqube/extensions/plugins/sonarqube-community-branch-plugin-1.14.0.jar=web"
+
+## Values to add to SONAR_CE_JAVAOPTS
+jvmCeOpts: "-javaagent:/opt/sonarqube/extensions/plugins/sonarqube-community-branch-plugin-1.14.0.jar=ce"
+
+## Override JDBC values
+## for external Databases
+jdbcOverwrite:
+  # If enable the JDBC Overwrite, make sure to set `postgresql.enabled=false`
+  enable: true
+  # The JDBC url of the external DB
+  jdbcUrl: "jdbc:postgresql://sonarqube.c1tquqt7ot5t.eu-west-1.rds.amazonaws.com/postgres" # MAYBE??? this causes a restart problem: ?socketTimeout=1500"
+  # The DB user that should be used for the JDBC connection
+  jdbcUsername: "postgres"
+  # Use this if you don't mind the DB password getting stored in plain text within the values file
+  jdbcPassword: "postgres"
+  ## Alternatively, use a pre-existing k8s secret containing the DB password
+  # jdbcSecretName: "sonarqube-jdbc"
+  ## and the secretValueKey of the password found within that secret
+  # jdbcSecretPasswordKey: "jdbc-password"
+
+## Configuration values for postgresql dependency
+## ref: https://github.com/bitnami/charts/blob/master/bitnami/postgresql/README.md
+postgresql:
+  # Enable to deploy the bitnami PostgreSQL chart
+  enabled: false
+
+# pod monitoring
+readinessProbe:
+  initialDelaySeconds: 120
+  periodSeconds: 60 
+  failureThreshold: 6
+  # If an ingress *path* other than the root (/) is defined, it should be reflected here
+  # A trailing "/" must be included
+  sonarWebContext: /
+  # sonarWebContext: /sonarqube/
+
+livenessProbe:
+  initialDelaySeconds: 120
+  periodSeconds: 60
+  failureThreshold: 6
+  # If an ingress *path* other than the root (/) is defined, it should be reflected here
+  # A trailing "/" must be included
+  sonarWebContext: /
+  # sonarWebContext: /sonarqube/
+  # If an ingress *path* is defined, it should be reflected here
+  # sonar.web.context: /sonarqube
+
+startupProbe:
+  initialDelaySeconds: 120
+  periodSeconds: 60
+  failureThreshold: 24
+  # If an ingress *path* other than the root (/) is defined, it should be reflected here
+  # A trailing "/" must be included
+  sonarWebContext: /
+  # sonarWebContext: /sonarqube/
+
+pdb:
+  maxUnavailable: 0
+
+istio:
+  virtualservice:
+    name:
+      context: "dev"
+      purpose: "testing"
+    port: 9000
+  ingress:
+    url: "sandbox.dex.almacareer.net"
+    hostname: "dex1-default-public-1933404462.eu-west-1.elb.amazonaws.com"
+  gateway: "istio-system/gateway-public"

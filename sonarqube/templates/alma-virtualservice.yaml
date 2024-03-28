@@ -1,0 +1,18 @@
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ template "sonarqube.name" . }}-{{ .Values.istio.virtualservice.name.context }}-{{ .Values.istio.virtualservice.name.purpose }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  gateways:
+  - {{ .Values.istio.gateway }}
+  hosts:
+  - {{ template "sonarqube.name" . }}-{{ .Values.istio.virtualservice.name.context }}-{{ .Values.istio.virtualservice.name.purpose }}.{{ .Values.istio.ingress.url }}
+  http:
+  - name: {{ template "sonarqube.name" . }}-{{ .Values.istio.virtualservice.name.context }}-{{ .Values.istio.virtualservice.name.purpose }}
+    route:
+    - destination:
+        host: {{ template "sonarqube.fullname" . }}
+        port:
+          number: {{ .Values.istio.virtualservice.port }}
